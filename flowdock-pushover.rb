@@ -3,6 +3,7 @@ require 'eventmachine'
 require 'em-http'
 require 'json'
 require "net/https"
+require "em-eventsource"
 
 require './config'
 
@@ -18,27 +19,41 @@ def pushover(user, message)
 end
 
 def flowdock(organization, flow)
-  http = EM::HttpRequest.new("https://stream.flowdock.com/flows/#{organization}/#{flow}")
-  EventMachine.run do
-    s = http.get(:head => {
-                   'Authorization' => [FLOWDOCK[:token], ''],
-                   'accept' => 'application/json'
-                 }, :keepalive => true, :connect_timeout => 0, :inactivity_timeout => 0)
+  EM.run do
+    url = "https://stream.flowdock.com/flows/#{organization}/#{flow}"
+    headers = {
+      :accept => 'text/event-stream',
+      'Authorization' => [FLOWDOCK[:token], '']
+    }
 
-    buffer = ""
-    s.stream do |chunk|
-      buffer << chunk
-      while line = buffer.slice!(/.+\r\n/)
-        puts JSON.parse(line).inspect
-        item = JSON.parse(line)
-        item['tags'].each do |user|
-          po_token = USER_TOKENS[user]
-          if po_token
-            yield po_token, item['content']
-          end
+    source = EventMachine::EventSource.new(url, nil, headers)
+
+    source.message do |message|
+      puts "new message #{message}"
+      STDOUT.flush
+
+      item = JSON.parse(message)
+
+      item['tags'].each do |user|
+        po_token = USER_TOKENS[user]
+        if po_token
+          puts "Push to (#{user}, #{po_token})"
+          yield po_token, item['content']
         end
       end
     end
+
+    source.open do
+      puts "** Stream open"
+      STDOUT.flush
+    end
+
+    source.error do |error|
+      puts "** error #{error}"
+      STDOUT.flush
+    end
+
+    source.start # Start listening
   end
 end
 
