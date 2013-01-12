@@ -57,4 +57,14 @@ def flowdock(organization, flow)
   end
 end
 
-flowdock(FLOWDOCK[:org], FLOWDOCK[:flow]) { |user,m| pushover(user,m) }
+t = Thread.new do
+  loop do
+    sleep 6 * 60 * 60
+    exit
+  end
+end
+
+flowdock(ENV['FLOWDOCK_ORG'], ENV['FLOWDOCK_FLOW']) { |user,m| pushover(user,m) }
+
+puts 'flowdock returned'
+t.join
