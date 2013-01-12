@@ -5,8 +5,6 @@ require 'json'
 require "net/https"
 require "em-eventsource"
 
-require './config'
-
 def pushover(user, message)
   url = URI.parse("https://api.pushover.net/1/messages")
   req = Net::HTTP::Post.new(url.path)
@@ -23,7 +21,7 @@ def flowdock(organization, flow)
     url = "https://stream.flowdock.com/flows/#{organization}/#{flow}"
     headers = {
       :accept => 'text/event-stream',
-      'Authorization' => [FLOWDOCK[:token], '']
+      'Authorization' => [ENV['FLOWDOCK_TOKEN'], '']
     }
 
     source = EventMachine::EventSource.new(url, nil, headers)
@@ -35,7 +33,7 @@ def flowdock(organization, flow)
       item = JSON.parse(message)
 
       item['tags'].each do |user|
-        po_token = USER_TOKENS[user]
+        po_token = ENV['USER_TOKEN']
         if po_token
           puts "Push to (#{user}, #{po_token})"
           yield po_token, item['content']
