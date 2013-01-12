@@ -9,7 +9,7 @@ def pushover(user, message)
   url = URI.parse("https://api.pushover.net/1/messages")
   req = Net::HTTP::Post.new(url.path)
 
-  req.set_form_data({ :token => PUSHOVER[:token], :user => user, :message => message })
+  req.set_form_data({ :token => ENV['PUSHOVER_API_TOKEN'], :user => user, :message => message })
   res = Net::HTTP.new(url.host, url.port)
   res.use_ssl = true
   # res.verify_mode = OpenSSL::SSL::VERIFY_PEER
@@ -31,10 +31,9 @@ def flowdock(organization, flow)
       STDOUT.flush
 
       item = JSON.parse(message)
-
       item['tags'].each do |user|
-        po_token = ENV['USER_TOKEN']
-        if po_token
+        if user == ENV['FLOWDOCK_USER_TOKEN']
+          po_token = ENV['PUSHOVER_USER_TOKEN']
           puts "Push to (#{user}, #{po_token})"
           yield po_token, item['content']
         end
